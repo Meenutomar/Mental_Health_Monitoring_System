@@ -2,3 +2,4 @@
 /static/uploads/*
 /env/*
 /env/*/*
+*.pdf
