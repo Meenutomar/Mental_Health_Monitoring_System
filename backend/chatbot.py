@@ -2,6 +2,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import google.generativeai as genai
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Use API URL from .env
+API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -16,7 +24,7 @@ app.add_middleware(
 )
 
 # Configure AI model
-genai.configure(api_key="AIzaSyCpg9NVNBxt_kPK1dinakPM_qYa1t_AoVE") 
+genai.configure(api_key=API_KEY) 
 model = genai.GenerativeModel("gemini-2.0-flash")
 
 # Define request model
