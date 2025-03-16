@@ -2,221 +2,191 @@ import os
 import streamlit as st
 import cv2
 import numpy as np
+import librosa
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from PIL import Image
 from fpdf import FPDF
+import sounddevice as sd
+import queue
+import time
+import requests
 
-# Load the pre-trained emotion recognition model
-MODEL_PATH = "E:/SEM_4/MajorProject/model/emotion_recognition_model.h5"
-if not os.path.exists(MODEL_PATH):
-    st.error("❌ Model file not found! Please check the path.")
+# Streamlit UI Configuration
+st.set_page_config(page_title="Mental Health Diagnostic Tool", layout="wide")
+
+# Paths for Models
+FACIAL_MODEL_PATH = "./model/emotion_recognition_model.h5"
+SPEECH_MODEL_PATH = "./model/depression_audio_model.h5"
+
+# Load Emotion Recognition Model
+if not os.path.exists(FACIAL_MODEL_PATH):
+    st.error("❌ Facial Emotion Model Not Found! Check the path.")
     st.stop()
+facial_model = load_model(FACIAL_MODEL_PATH)
 
-model = load_model(MODEL_PATH)
-model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+# Load Speech-Based Depression Model
+if not os.path.exists(SPEECH_MODEL_PATH):
+    st.error("❌ Depression Audio Model Not Found! Check the path.")
+    st.stop()
+speech_model = load_model(SPEECH_MODEL_PATH)
+
+st.success("✅ All Models Loaded Successfully!")
 
 # Emotion labels
 emotion_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 
-# Preprocess image function
+# Function to Process Images for Emotion Detection
 def preprocess_image(image):
-    img = np.array(image.convert("L"))  # Convert to grayscale
+    img = np.array(image.convert("L"))  
     img_resized = cv2.resize(img, (48, 48), interpolation=cv2.INTER_AREA)
     img_normalized = img_resized / 255.0
     img_final = np.expand_dims(img_normalized, axis=0)
     img_final = np.expand_dims(img_final, axis=-1)
     return img_final
 
-# Function to convert responses to score
-def convert_to_score(value):
-    score_map = {
-        "Rarely": 25, "Sometimes": 50, "Often": 75, "Always": 100,
-        "No": 0, "Occasionally": 25, "Frequently": 75, "Every Night": 100,
-        "Never": 0, "Few times a week": 50, "Daily": 100,
-        "Very High": 100, "Moderate": 50, "Low": 25, "Very Low": 0
-    }
-    return score_map.get(value, 50)
+# Function for Speech Feature Extraction
+def extract_audio_features(audio_path):
+    y, sr = librosa.load(audio_path, sr=16000)
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+    mfcc_mean = np.mean(mfcc, axis=1)
+    mfcc_std = np.std(mfcc, axis=1)
+    pitch_mean = np.mean(librosa.piptrack(y=y, sr=sr))
+    pitch_std = np.std(librosa.piptrack(y=y, sr=sr))
+    energy_mean = np.mean(librosa.feature.rms(y=y))
+    energy_std = np.std(librosa.feature.rms(y=y))
 
-# Generate PDF report
-def generate_pdf(filename, emotion, responses):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    features = np.array([mfcc_mean.tolist() + mfcc_std.tolist() + 
+                          [pitch_mean, pitch_std, energy_mean, energy_std]])
     
-    pdf.cell(200, 10, "Mental Health & Emotion Analysis Report", ln=True, align="C")
-    pdf.ln(10)
-    pdf.cell(200, 10, f"Detected Emotion: {emotion}", ln=True, align="C")
-    pdf.ln(10)
-    
-    questions = [
-        "Stress Level", "Sleep Quality", "Anxiety Symptoms", "Mood Analysis", 
-        "Energy & Fatigue", "Physical Activity", "Social Life & Isolation", "Self-Esteem"
-    ]
-    
-    for q, r in zip(questions, responses):
-        pdf.multi_cell(0, 10, f"{q}: {r}")
-    
-    pdf.ln(10)
-    pdf.cell(200, 10, "This report is for informational purposes only.", ln=True, align="C")
-    
-    pdf_path = f"{filename}.pdf"
-    pdf.output(pdf_path)
-    return pdf_path
+    return np.expand_dims(features, axis=1)
 
-# Streamlit UI
-st.set_page_config(page_title="Mental Health Diagnostic Tool", layout="wide")
+# Function for Real-Time Audio Recording
+q = queue.Queue()
+def callback(indata, frames, time, status):
+    if status:
+        print(status)
+    q.put(indata.copy())
 
-# Custom CSS for fixed header and footer
-st.markdown(
-    """
-    <style>
-    /* Fixed Header */
-    .header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background-color: #0e76a8;
-        color: white;
-        text-align: center;
-        padding: 15px;
-        font-size: 24px;
-        font-weight: bold;
-        z-index: 1000;
-    }
+def process_real_time_audio():
+    st.subheader("🎙️ Speak Now... AI is Listening")
+    duration = 5
+    sr = 16000
+    st.write("⏳ Listening...")
+    with sd.InputStream(callback=callback, samplerate=sr, channels=1):
+        time.sleep(duration)
 
-    /* Fixed Footer */
-    .footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background-color: #0e76a8;
-        color: white;
-        text-align: center;
-        padding: 10px;
-        font-size: 14px;
-        z-index: 1000;
-    }
+    audio_data = []
+    while not q.empty():
+        audio_data.extend(q.get())
 
-    /* Adjust content to avoid overlap */
-    .content {
-        margin-top: 60px; /* Space for the fixed header */
-        margin-bottom: 50px; /* Space for the fixed footer */
-        padding: 20px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+    audio_data = np.array(audio_data).flatten()
+    audio_features = extract_audio_features(audio_data)
+    prediction = speech_model.predict(audio_features)
+    depression_label = "Depressed 😔" if prediction[0][0] > 0.5 else "Not Depressed 😊"
 
-# Inject fixed header
-st.markdown('<div class="header">Mental Health Diagnostic Tool</div>', unsafe_allow_html=True)
+    st.write(f"🎭 **Live Prediction:** {depression_label} ({prediction[0][0]:.2f})")
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-app_mode = st.sidebar.radio("Choose a feature", ["Video Feed", "Upload Image", "Mood Form", "Chat", "Report"])
+app_mode = st.sidebar.radio("Choose a feature", ["Live Video", "Upload Image", "Upload Audio", "Live Speech", "Chat"])
 
-# 1. Video Feed (Using OpenCV)
-if app_mode == "Video Feed":
-    st.subheader("Live Camera Feed")
-
-    # Create two columns (one for the checkbox, one for the video feed)
-    col1, col2 = st.columns([1, 3])  # Adjust width ratio as needed
-
-    with col1:
-        run = st.checkbox("Start Camera")
-
-    with col2:
-        frame_window = st.empty()  # Placeholder for video
+# 1. **Live Facial Emotion Detection**
+if app_mode == "Live Video":
+    st.subheader("📹 Live Facial Emotion Detection")
+    run = st.checkbox("Start Camera")
+    frame_window = st.image([])
 
     if run:
         camera = cv2.VideoCapture(0)
         while run:
-            _, frame = camera.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame_window.image(frame, caption="Live Feed", use_container_width=True)
+            ret, frame = camera.read()
+            if not ret:
+                st.error("❌ Failed to capture video!")
+                break
+
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            resized_img = cv2.resize(gray, (48, 48), interpolation=cv2.INTER_AREA)
+            normalized_img = resized_img / 255.0
+            input_img = np.expand_dims(normalized_img, axis=(0, -1))
+
+            prediction = facial_model.predict(input_img)
+            emotion_detected = emotion_labels[np.argmax(prediction)]
+
+            cv2.putText(frame, f"Emotion: {emotion_detected}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            frame_window.image(frame, channels="BGR")
+
         camera.release()
 
-# 2. Image Upload
+# 2. **Upload Image for Emotion Detection**
 elif app_mode == "Upload Image":
-    # File uploader
     uploaded_file = st.file_uploader("Upload an Image for Emotion Detection", type=["jpg", "png", "jpeg"])
 
     if uploaded_file:
         image = Image.open(uploaded_file)
         st.image(image, caption="Uploaded Image", width=150)
-
-        # Process Image
         processed_img = preprocess_image(image)
-        prediction = model.predict(processed_img)
+        prediction = facial_model.predict(processed_img)
         predicted_emotion = emotion_labels[np.argmax(prediction)]
         st.write(f"🎭 **Predicted Emotion:** {predicted_emotion}")
 
-        # Mental Health Questions
-        st.subheader("📝 Mental Health Questionnaire")
-        
-        responses = [
-            st.radio("How often do you feel stressed?", ["Rarely", "Sometimes", "Often", "Always"]),
-            st.radio("Do you experience sleep issues?", ["No", "Occasionally", "Frequently", "Every Night"]),
-            st.radio("Do you experience anxiety symptoms?", ["Never", "Few times a week", "Daily"]),
-            st.radio("How would you describe your mood?", ["Very Low", "Low", "Moderate", "Very High"]),
-            st.radio("Do you feel fatigued or low in energy?", ["Never", "Sometimes", "Often", "Always"]),
-            st.radio("How often do you engage in physical activity?", ["Never", "Few times a week", "Daily"]),
-            st.radio("Do you feel socially isolated?", ["Never", "Sometimes", "Often", "Always"]),
-            st.radio("How would you rate your self-esteem?", ["Very Low", "Low", "Moderate", "Very High"])
-        ]
-
-        if st.button("Generate Report"):
-            st.session_state["emotion"] = predicted_emotion
-            st.session_state["responses"] = responses
-            pdf_path = generate_pdf("Mental_Health_Report", predicted_emotion, responses)
-            
-            with open(pdf_path, "rb") as pdf_file:
-                st.download_button(label="📥 Download Report", data=pdf_file, file_name="Mental_Health_Report.pdf", mime="application/pdf")
-
-
-# 3. Mood Form
-elif app_mode == "Mood Form":
-    st.subheader("Mood Assessment Form")
+# 3. **Upload Audio for Depression Detection**
+elif app_mode == "Upload Audio":
+    uploaded_audio = st.file_uploader("Upload an Audio File", type=["wav", "mp3", "ogg"])
     
-    with st.form(key="mood_form"):
-        mood = st.selectbox("How are you feeling today?", ["Happy", "Anxious", "Stressed", "Depressed", "Neutral"])
-        sleep = st.selectbox("How was your sleep?", ["Good", "Average", "Poor"])
-        appetite = st.selectbox("How is your appetite?", ["Normal", "Increased", "Decreased"])
-        energy = st.selectbox("Energy levels today?", ["High", "Moderate", "Low"])
-        submit_button = st.form_submit_button("Submit")
+    if uploaded_audio:
+        audio_path = f"./temp_audio.wav"
+        with open(audio_path, "wb") as f:
+            f.write(uploaded_audio.getbuffer())
 
-        if submit_button:
-            st.success("Mood assessment recorded!")
+        st.audio(audio_path, format="audio/wav")
+        audio_features = extract_audio_features(audio_path)
+        prediction = speech_model.predict(audio_features)
+        depression_label = "Depressed 😔" if prediction[0][0] > 0.5 else "Not Depressed 😊"
+        st.write(f"🧠 **Prediction:** {depression_label} ({prediction[0][0]:.2f})")
 
-# 4. Free Text Chat
+# 4. **Live Speech-Based Depression Detection**
+elif app_mode == "Live Speech":
+    process_real_time_audio()
+
+# 5. **AI Chatbot for Mental Health Support**
 elif app_mode == "Chat":
-    st.subheader("Chat with the AI")
-    user_input = st.text_area("Express your thoughts here:")
-    
+   
+
+
+    # Define the FastAPI endpoint
+    API_URL = "http://127.0.0.1:8000/mental-health-assessment"
+
+    st.subheader("💬 Chat with the AI")
+
+    # Get user input
+    name = st.text_input("Enter your name:")
+    age = st.number_input("Enter your age:", min_value=1, max_value=120, step=1)
+    user_response = st.text_area("How are you feeling today?")
+
+    # Submit button
     if st.button("Submit"):
-        st.write(f"You said: {user_input}")
-        st.success("Message recorded!")
+        if name and age and user_response:  # Ensure all fields are filled
+            # Create JSON payload
+            payload = {
+                "name": name,
+                "age": age,
+                "responses": {"message": user_response}
+            }
+            
+            try:
+                # Send POST request to FastAPI
+                response = requests.post(API_URL, json=payload)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    st.write(f"🤖 AI: {data.get("assessment")}")
+                    
+                else:
+                    st.error(f"Error {response.status_code}: {response.text}")
 
-# 5. Generate Report
-elif app_mode == "Report":
-    st.subheader("Mental Health Report")
-    
-    st.write("Mood: Happy")
-    st.write("Sleep: Good")
-    st.write("Appetite: Normal")
-    st.write("Energy Levels: High")
-    st.write("Your thoughts: 'I am feeling great today!'")
-
-    st.markdown("### **Summary:** Based on your recent entries, your mental health seems stable. Keep maintaining a balanced routine.")
-
-# End content wrapper
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Inject fixed footer
-st.markdown('<div class="footer">© 2025 Mental Health AI | All Rights Reserved</div>', unsafe_allow_html=True)
-
-#st.title("🧠 Mental Health Diagnostic Tool")
+            except requests.exceptions.RequestException as e:
+                st.error(f"Request failed: {e}")
+        else:
+            st.warning("Please fill in all fields.")
 
