@@ -3,3 +3,5 @@
 /env/*
 /env/*/*
 *.pdf
+/frontend/frontend-venv/*
+/frontend/page/__pycache__/*
