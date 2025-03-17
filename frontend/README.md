@@ -14,4 +14,13 @@ frontend-venv/Scripts/activate
 </code>
 This will activate virtual environment
 
+## How to start app
+Run the following command in terminal
+<code>
+ streamlit run main.py
+</code>
 
+For automatic reload use 
+<code>
+streamlit run main.py --server.runOnSave true
+</code>

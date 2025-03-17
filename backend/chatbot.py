@@ -31,7 +31,6 @@ model = genai.GenerativeModel("gemini-2.0-flash")
 class MentalHealthRequest(BaseModel):
     name: str
     age: int
-    responses: dict  # Dictionary storing question responses
 
 @app.post("/mental-health-assessment")
 async def mental_health_assessment(request: MentalHealthRequest):
@@ -88,7 +87,7 @@ async def mental_health_assessment(request: MentalHealthRequest):
     Based on their responses, offer empathetic advice and possible coping strategies. Encourage seeking professional help if symptoms are severe.
     
     Responses from {request.name}, {request.age} years old:
-    {request.responses}
+    
     
     Provide a structured analysis of their mental health status, including potential risks of depression, anxiety, PTSD, and suggestions for coping strategies.
     """
