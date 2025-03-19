@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="Mental Health Diagnostic Tool", layout="wide")
+
 from streamlit_option_menu import option_menu
 import page.chat  
 import page.image_upload
@@ -6,7 +8,7 @@ import page.live_audio
 import page.live_video
 import page.speech
 
-st.set_page_config(page_title="Mental Health Diagnostic Tool", layout="wide")
+
 
 # Detect Streamlit theme using CSS (Trick)
 is_dark_theme = st.get_option("theme.base") == "dark"
@@ -15,6 +17,12 @@ is_dark_theme = st.get_option("theme.base") == "dark"
 bg_color = "#262730" if is_dark_theme else "#f8f9fa"  # Dark for dark mode, Light for light mode
 text_color = "white" if is_dark_theme else "black"
 selected_bg_color = "#FF8C00"  # Orange for selection
+
+st.markdown("<h1 style='text-align: center; color: cyan;'>💙 Mental Health AI 💙</h1>", unsafe_allow_html=True)
+
+# Sidebar
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3468/3468089.png", width=100)
+st.sidebar.markdown("### AI-powered mental health chatbot & mood analysis.")
 
 # Sidebar Menu
 with st.sidebar:
