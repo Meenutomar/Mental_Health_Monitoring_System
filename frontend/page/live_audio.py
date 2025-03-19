@@ -1,109 +1,100 @@
 import streamlit as st
 import websocket
-import sounddevice as sd
-import numpy as np
-import queue
-import threading
-import time
+import base64
 
-# ✅ Global flag for audio state (Thread-Safe)
-audio_started_flag = False
-
-# WebSocket API URL
 API_AUDIO_URL = "ws://localhost:8000/audiostream"
 
-# Queue for storing audio chunks
-audio_queue = queue.Queue()
+# ✅ Convert Image to Base64
+def img_to_bytes(img_path):
+    """Converts an image file to base64 encoded bytes."""
+    with open(img_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    return encoded_string
 
-def audio_callback(indata, frames, time, status):
-    """Captures microphone input and adds it to the queue."""
-    print("Inside audio callback:", status)
-    data =  indata.copy()
-    if status:
-        print(status)
-    audio_queue.put(data)
+# ✅ Load RoboMH Icon (Ensure correct path)
+image_path = "./assets/logo.png"
+image_bytes = img_to_bytes(image_path)
 
-def start_audio_stream():
-    """Manages the WebSocket connection and streams audio."""
-    global audio_started_flag  # ✅ Use global flag instead of session state
+# ✅ Initialize session state for logs & speaking state
+if "logs" not in st.session_state:
+    st.session_state.logs = []
+if "is_speaking" not in st.session_state:
+    st.session_state.is_speaking = False
+
+def update_logs(new_log):
+    """Dynamically updates logs like a console."""
+    if "logs" not in st.session_state:
+        st.session_state.logs = []
+    
+    st.session_state.logs.append(new_log)
+
+    # ✅ Update logs in real-time **only after log_placeholder is defined**
+    if "log_placeholder" in st.session_state:
+        st.session_state.log_placeholder.code("\n".join(st.session_state.logs), language="bash")
+
+def get_welcome_audio():
+    """Fetch welcome message from backend, play it, and log steps."""
     try:
-        print("🛠️ Starting WebSocket Thread...")
-
+        update_logs("🎙️ Connecting to WebSocket for welcome message...")
         ws = websocket.create_connection(API_AUDIO_URL)
-        print("✅ WebSocket connection established!")
 
-        # 🔥 Start audio recording  
-        stream = sd.InputStream(callback=audio_callback, samplerate=16000, channels=1, dtype="int16")
-        stream.start()  # ✅ Start capturing audio
-        print("🎤 Microphone stream started!")
-
-        while audio_started_flag:  # ✅ Using thread-safe flag instead of session state
-            print("🔄 Loop running inside WebSocket thread!")
-
-            if not audio_queue.empty():
-                audio_data = audio_queue.get()
-                print(f"🎙️ Sending {len(audio_data)} bytes of audio...")
-                ws.send(audio_data.tobytes())
-
-                response = ws.recv()
-                print(f"🤖 Received AI response: {type(response)}")
-
-                if isinstance(response, bytes):  # AI response as audio
-                    st.session_state.audio_bytes = response
-                else:  # AI response as text
-                    st.session_state.messages.append({"sender": "AI", "text": response})
-
-                time.sleep(0.1)  # Prevents high CPU usage
-            else:
-                print("⚠️ No audio data in queue!")
-
-        print("❌ Stopping microphone stream and closing WebSocket")
-        stream.stop()
-        stream.close()
-        ws.close()
-
-    except Exception as e:
-        print(f"⚠️ WebSocket Error: {e}")
-
-def run():
-    """Streamlit UI for AI Mental Health Chat."""
-    global audio_started_flag  # ✅ Use global variable for thread safety
-
-    st.subheader("🎙️ Live Audio")
-
-    if st.button("🎧 Start Chat"):
-        print("🟢 Start button clicked")
+        # ✅ Receive the audio bytes from WebSocket
+        welcome_audio = ws.recv()
+        if isinstance(welcome_audio, bytes):
+            update_logs(f"✅ Received {len(welcome_audio)} bytes of welcome audio")
+            st.session_state.is_speaking = True  # 🔥 Mark speaking state
+            update_logs("🤖 RoboMH is speaking...")
+            auto_play_audio(welcome_audio)  # 🔥 Auto-play function
         
-        if not audio_started_flag:
-            audio_started_flag = True  # ✅ Set global flag
+        ws.close()
+        update_logs("✅ WebSocket closed after receiving welcome message.")
+    except Exception as e:
+        update_logs(f"⚠️ Error fetching welcome message: {e}")
 
-            print("✅ audio_started set to True")
+def auto_play_audio(audio_bytes):
+    """Automatically play audio and log the process."""
+    audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
 
-            # 🔥 Start WebSocket communication in a separate thread
-            thread = threading.Thread(target=start_audio_stream, daemon=True)
-            thread.start()
+    update_logs("🔊 Playing welcome audio...")
+    
+    audio_html = f"""
+        <audio id="audio-player" autoplay>
+            <source src="data:audio/wav;base64,{audio_base64}" type="audio/wav">
+        </audio>
+        <script>
+            var audio = document.getElementById("audio-player");
 
-            time.sleep(1)  # Give some time to start the WebSocket
+            audio.onended = function() {{
+                fetch('/_stcore_update', {{ method: 'POST' }});  // ✅ Force UI refresh
+            }};
+        </script>
+    """
 
-            if thread.is_alive():
-                print("🚀 WebSocket thread started successfully!")
-            else:
-                print("❌ WebSocket thread failed to start!")
+    st.markdown(audio_html, unsafe_allow_html=True)
+    update_logs("🎧 Audio playback started.")
 
-            st.rerun()  # ✅ Refresh UI to reflect session state changes
+# ✅ Streamlit UI
+st.title("🎙️ AI Mental Health Chat")
 
-    if audio_started_flag:
-        if st.button("🛑 Stop Chat"):
-            audio_started_flag = False  # ✅ Stop the thread safely
-            st.rerun()  # ✅ Refresh UI after stopping
+# ✅ Button to Start Chat
+if st.button("🎧 Start Chat"):
+    update_logs("🟢 Start button clicked")
+    get_welcome_audio()  # 🔥 Fetch & play welcome message again
 
-    st.subheader("💬 Chat Log")
-    for msg in st.session_state.get("messages", []):
-        st.markdown(f"**{msg['sender']}:** {msg['text']}")
+# ✅ Define Logs Section **Below Start Chat Button**
+st.markdown(
+    f"""
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px;">
+        <img src="data:image/png;base64,{image_bytes}" width="40" height="40">
+        <h5 style="margin: 0;">Logs</h5>
+    </div>
+    <hr style="border: 1px solid gray;">
+    """,
+    unsafe_allow_html=True,
+)
 
-    # ✅ Play AI response audio
-    if st.session_state.get("audio_bytes"):
-        st.audio(st.session_state.audio_bytes, format="audio/wav")
+# ✅ Define Placeholder for Logs (AFTER Button)
+st.session_state.log_placeholder = st.empty()  # ✅ Now logs appear **below** the button
 
-if __name__ == "__main__":
-    run()
+# ✅ Render initial logs
+st.session_state.log_placeholder.code("\n".join(st.session_state.logs), language="bash")

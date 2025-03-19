@@ -21,7 +21,7 @@ API_VIDEO_URL = "ws://localhost:8000/videostream"
 q = queue.Queue()
 
 def audio_callback(indata, frames, time, status):
-    q.put(bytes(indata))
+    q.put(indata.tobytes())
 
 def start_audio_stream():
     ws = websocket.create_connection(API_VIDEO_URL)
@@ -29,10 +29,12 @@ def start_audio_stream():
                            channels=1, callback=audio_callback):
         while st.session_state.video_started:
             audio_data = q.get()
-            ws.send(audio_data)
-            response = ws.recv()
-            st.session_state.messages.append({"sender": "AI", "text": response})
-            st.rerun()
+            if audio_data:  # ✅ Ensure audio_data is not empty
+                ws.send(audio_data)
+                response = ws.recv()
+                st.session_state.messages.append({"sender": "AI", "text": response})
+                st.rerun()
+
 
 def capture_video_frame():
     cap = cv2.VideoCapture(0)
