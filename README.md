@@ -1,5 +1,5 @@
 # 🧠 Mental Health & Emotion Analysis
-
+![Logo](frontend/assets/logo.png)
 ## 🌟 Overview
 This project is a **Mental Health & Emotion Analysis System** that:
 - Detects emotions from uploaded facial images.
