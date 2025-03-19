@@ -18,10 +18,10 @@ bg_color = "#262730" if is_dark_theme else "#f8f9fa"  # Dark for dark mode, Ligh
 text_color = "white" if is_dark_theme else "black"
 selected_bg_color = "#FF8C00"  # Orange for selection
 
-st.markdown("<h1 style='text-align: center; color: cyan;'>💙 Mental Health AI 💙</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; '>🧠  Mental Health AI</h1>", unsafe_allow_html=True)
 
 # Sidebar
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3468/3468089.png", width=100)
+st.sidebar.image("./assets/logo.png", width=75)
 st.sidebar.markdown("### AI-powered mental health chatbot & mood analysis.")
 
 # Sidebar Menu

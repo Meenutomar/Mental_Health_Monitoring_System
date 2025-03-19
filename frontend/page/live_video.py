@@ -9,16 +9,14 @@ import sounddevice as sd
 import queue
 import cv2
 
-API_VIDEO_URL = "ws://localhost:8000/videostream"
+# ✅ Ensure session state variables are initialized at the very beginning
+if "video_started" not in st.session_state:
+    st.session_state.video_started = False  # Initialize video state
 
-st.title("🧠 AI Mental Health Live Conversation")
-
-# ✅ Properly initialize session state variables at the very beginning
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "video_started" not in st.session_state:
-    st.session_state.video_started = False  # Ensure it's initialized before use
+API_VIDEO_URL = "ws://localhost:8000/videostream"
 
 q = queue.Queue()
 
@@ -46,7 +44,7 @@ def capture_video_frame():
     return None
 
 def send_video_frame():
-    ws = websocket.create_connection(API_VIDEO_URL)
+    ws = websocket.create_connection("ws://localhost:8000/videostream")
     while st.session_state.video_started:
         frame_data = capture_video_frame()
         if frame_data:
@@ -63,7 +61,7 @@ def run():
         threading.Thread(target=send_video_frame, daemon=True).start()
         st.rerun()
 
-    # ✅ Stop Button (Only visible when video is running)
+    # ✅ Stop Button
     if st.session_state.video_started:
         if st.button("🛑 Stop Video"):
             st.session_state.video_started = False
@@ -86,7 +84,7 @@ def run():
     if st.button("Send"):
         if user_input:
             st.session_state.messages.append({"sender": "User", "text": user_input})
-            ws = websocket.create_connection(API_VIDEO_URL)
+            ws = websocket.create_connection("ws://localhost:8000/videostream")
             ws.send(json.dumps({"type": "text", "message": user_input}))
             response = ws.recv()
             st.session_state.messages.append({"sender": "AI", "text": response})
