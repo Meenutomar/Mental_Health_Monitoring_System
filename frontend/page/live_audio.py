@@ -15,12 +15,6 @@ def img_to_bytes(img_path):
 image_path = "./assets/logo.png"
 image_bytes = img_to_bytes(image_path)
 
-# ✅ Initialize session state for logs & speaking state
-if "logs" not in st.session_state:
-    st.session_state.logs = []
-if "is_speaking" not in st.session_state:
-    st.session_state.is_speaking = False
-
 def update_logs(new_log):
     """Dynamically updates logs like a console."""
     if "logs" not in st.session_state:
@@ -73,28 +67,38 @@ def auto_play_audio(audio_bytes):
     st.markdown(audio_html, unsafe_allow_html=True)
     update_logs("🎧 Audio playback started.")
 
-# ✅ Streamlit UI
-st.title("🎙️ AI Mental Health Chat")
+def run():
+    """Main Streamlit UI."""
+    st.subheader("🎙️ Lets Talk")
 
-# ✅ Button to Start Chat
-if st.button("🎧 Start Chat"):
-    update_logs("🟢 Start button clicked")
-    get_welcome_audio()  # 🔥 Fetch & play welcome message again
+    # ✅ Initialize session state at the START of run()
+    if "logs" not in st.session_state:
+        st.session_state.logs = []
+    if "is_speaking" not in st.session_state:
+        st.session_state.is_speaking = False
 
-# ✅ Define Logs Section **Below Start Chat Button**
-st.markdown(
-    f"""
-    <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px;">
-        <img src="data:image/png;base64,{image_bytes}" width="40" height="40">
-        <h5 style="margin: 0;">Logs</h5>
-    </div>
-    <hr style="border: 1px solid gray;">
-    """,
-    unsafe_allow_html=True,
-)
+    # ✅ Button to Start Chat
+    if st.button("🎧 Start Chat"):
+        update_logs("🟢 Start button clicked")
+        get_welcome_audio()  # 🔥 Fetch & play welcome message again
 
-# ✅ Define Placeholder for Logs (AFTER Button)
-st.session_state.log_placeholder = st.empty()  # ✅ Now logs appear **below** the button
+    # ✅ Define Logs Section **Below Start Chat Button**
+    st.markdown(
+        f"""
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px;">
+            <img src="data:image/png;base64,{image_bytes}" width="40" height="40">
+            <h5 style="margin: 0;">Logs</h5>
+        </div>
+        <hr style="border: 1px solid gray;">
+        """,
+        unsafe_allow_html=True,
+    )
 
-# ✅ Render initial logs
-st.session_state.log_placeholder.code("\n".join(st.session_state.logs), language="bash")
+    # ✅ Define Placeholder for Logs (AFTER Button)
+    if "log_placeholder" not in st.session_state:
+        st.session_state.log_placeholder = st.empty()  # ✅ Now logs appear **below** the button
+
+    # ✅ Render initial logs
+    st.session_state.log_placeholder.code("\n".join(st.session_state.logs), language="bash")
+
+
