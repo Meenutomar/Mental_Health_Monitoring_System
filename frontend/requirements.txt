@@ -1,4 +1,13 @@
-streamlit - 1.43.2
-python-dotenv - 1.0.1
+streamlit
+python-dotenv
 streamlit-option-menu
-streamlit-chat - 0.1.1
+streamlit-chat
+websocket-client
+cryptography
+setuptools-rust
+streamlit-webrtc
+numpy
+pydub
+soundfile
+opencv-python
+sounddevice
