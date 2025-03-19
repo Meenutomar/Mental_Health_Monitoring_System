@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import chatbot
 import videostream
+import audiostream
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -9,7 +10,7 @@ app = FastAPI()
 # Allow requests from any origin (adjust for production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # ✅ Allow requests from all origins (can be restricted later)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -18,6 +19,7 @@ app.add_middleware(
 # Include Routers
 app.include_router(chatbot.router)
 app.include_router(videostream.router)
+app.include_router(audiostream.router)
 
 if __name__ == "__main__":
     import uvicorn

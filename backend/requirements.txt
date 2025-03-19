@@ -6,3 +6,9 @@ uvicorn
 numpy
 opencv-python
 deepface
+torch 
+openai-whisper 
+edge-tts 
+websockets 
+soundfile
+simpleaudio

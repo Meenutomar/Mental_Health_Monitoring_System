@@ -10,7 +10,7 @@ API_URI = os.getenv("API_URI")
 API_URL = f"{API_URI}/chat/"
 
 def run():
-    st.subheader("💬 Chat with AI")
+    st.subheader("💬 Lets Chat")
 
     # Initialize session state
     if "messages" not in st.session_state:
