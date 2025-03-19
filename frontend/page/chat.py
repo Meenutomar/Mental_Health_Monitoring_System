@@ -7,7 +7,7 @@ import os
 # Load environment variables
 load_dotenv()
 API_URI = os.getenv("API_URI")
-API_URL = f"{API_URI}/mental-health-assessment/"
+API_URL = f"{API_URI}/chat/"
 
 def run():
     st.subheader("💬 Chat with AI")

@@ -16,6 +16,6 @@ This will activate virtual environment
 
 ## How to run
 <code>
-uvicorn chatbot:app
+uvicorn main:app
 </code>
 

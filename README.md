@@ -1,4 +1,7 @@
-# 🧠 Mental Health & Emotion Analysis
+
+<img src="frontend/assets/logo.png" alt="Logo" width="150">
+
+# AI-powered mental health chatbot & mood analysis.
 
 ## 🌟 Overview
 This project is a **Mental Health & Emotion Analysis System** that:

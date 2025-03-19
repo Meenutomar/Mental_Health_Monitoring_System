@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import google.generativeai as genai
@@ -9,17 +9,7 @@ import os
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Initialize FastAPI app
-app = FastAPI()
-
-# Allow requests from any origin (adjust for production)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter()
 
 # Configure AI model
 genai.configure(api_key=API_KEY)
@@ -31,7 +21,7 @@ class MentalHealthRequest(BaseModel):
     age: int
     message: str
 
-@app.post("/mental-health-assessment")
+@router.post("/chat")
 async def mental_health_assessment(request: MentalHealthRequest):
     print(f"Received request from {request.name}, Age: {request.age}, Message: {request.message}")
 
@@ -58,6 +48,3 @@ async def mental_health_assessment(request: MentalHealthRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
