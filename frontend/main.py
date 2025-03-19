@@ -68,8 +68,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # Sidebar
-st.sidebar.image("./assets/logo.png", width=75)
-st.sidebar.markdown("### AI-powered mental health chatbot & mood analysis.")
+st.sidebar.image("./assets/logo.png", width=80)
+st.sidebar.markdown("***AI-powered mental health chatbot***")
 
 # Sidebar Menu
 with st.sidebar:

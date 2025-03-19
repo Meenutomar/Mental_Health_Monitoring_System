@@ -54,7 +54,7 @@ def send_video_frame():
     ws.close()
 
 def run():
-    st.subheader("🎥 Live Video")
+    st.subheader("🎥 Lets Meet")
 
     # ✅ Start Button
     if st.button("▶️ Start Video"):
@@ -72,7 +72,6 @@ def run():
     if st.session_state.video_started:
         st.camera_input("Webcam Feed")  # Display webcam feed
 
-    st.subheader("💬 AI Mental Health Chat")
     chat_container = st.container()
 
     with chat_container:
@@ -82,7 +81,6 @@ def run():
             else:
                 st.markdown(f"**AI:** {msg['text']}")
 
-    user_input = st.text_input("Type your message:")
     if st.button("Send"):
         if user_input:
             st.session_state.messages.append({"sender": "User", "text": user_input})
