@@ -12,3 +12,5 @@ edge-tts
 websockets 
 soundfile
 simpleaudio
+SpeechRecognition
+pydub

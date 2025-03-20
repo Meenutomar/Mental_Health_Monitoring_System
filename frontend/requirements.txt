@@ -11,3 +11,7 @@ pydub
 soundfile
 opencv-python
 sounddevice
+speechrecognition
+pyttsx3
+PyAudio
+streamlit_supabase_auth
