@@ -1,61 +1,10 @@
 import streamlit as st
-from PIL import Image
-from streamlit_supabase_auth import login_form
-import requests
 import io
-from dotenv import load_dotenv
-import os
+from services.userservice import fetch_profile, save_profile, upload_image_to_supabase
 
-# Load environment variables
-load_dotenv()
-API_URI = os.getenv("API_URI")  # FastAPI backend URL
-SUPABASE_URL = os.getenv("SUPABASE_URL")
 
-def fetch_profile(email, token):
-    """Fetch user profile from FastAPI backend."""
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(f"{API_URI}/profile/{email}", headers=headers)
-    print('Fetch Profile:', response.json())
-    if response.status_code == 200:
-        profile = response.json()
-        if "profile" not in st.session_state:
-            st.session_state.profile = profile
-        return profile
-    return None
-
-def save_profile(profile_data, token):
-    """Save or update user profile via FastAPI backend with auth token."""
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(f"{API_URI}/profile", json=profile_data, headers=headers)
-    return response.status_code == 200
-
-def upload_image_to_supabase(image_data, email, token):
-    """Upload image to Supabase Storage via FastAPI backend."""
-    file_name = f"{email}.png"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    files = {
-        "file": ("file", image_data, "image/png")
-    }
-
-    response = requests.post(
-        f"{API_URI}/upload_image/{file_name}",
-        files=files,
-        headers=headers  # Don't manually set Content-Type
-    )
-
-    if response.status_code == 200:
-        return response.json().get("url")
+def run(session):
     
-    print("Upload Failed:", response.status_code, response.text)
-    return None
-
-
-def run():
-    # 1. Authenticate user
-    session = login_form()
 
     if not session:
         st.warning("Please log in to access your profile.")
@@ -64,20 +13,20 @@ def run():
     token = session['access_token']
     user_email = session['user']['email']
 
-    st.title("My Profile")
+    st.markdown('<h1><i class="bi bi-person"></i> My Profile</h1>', unsafe_allow_html=True)
+
+
 
     # 2. Fetch existing profile
     existing_profile = fetch_profile(user_email,token)
-    print('Existing Profile:', existing_profile)
+    #print('Existing Profile:', existing_profile)
 
     # 3. Profile Pic Columns
     col1, col2, col3 = st.columns([1, 2, 1])
 
     # Show existing or default profile pic
     profile_pic_url = existing_profile.get("profile_pic_url") if existing_profile else None
-    print('Profile Pic URL:', profile_pic_url)
     profile_pic_url = profile_pic_url if profile_pic_url else "./assets/default_profile.png"
-    print('Profile Pic URL2:', profile_pic_url)
     with col1:
         st.markdown("**Profile Picture**")
         st.image(profile_pic_url, width=120)
@@ -86,13 +35,11 @@ def run():
     with col2:
         st.markdown("**Upload Image**")
         uploaded_file = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg"])
-        print("Uploaded File:", uploaded_file)
 
     # Capture new image from camera
     with col3:
         st.markdown("**Take Picture**")
         captured_img = st.camera_input("Capture Image")
-        print("Captured Image:", captured_img)
 
     # 4. User Profile Form
     st.markdown("### Personal Details")
@@ -112,12 +59,9 @@ def run():
 
         # Upload image if available - camera takes priority
         img_data = captured_img or uploaded_file
-        print("Image Data:", img_data)
         if img_data:
-            print('Inside Image ')
             img_bytes = img_data.getvalue()
             profile_pic_url = upload_image_to_supabase(io.BytesIO(img_bytes), user_email, token)
-            print('Profile Pic Url: ', profile_pic_url)
 
         # Prepare profile payload
         profile_data = {
