@@ -1,3 +1,4 @@
+import page.userprofile
 import streamlit as st
 from streamlit_supabase_auth import logout_button
 from streamlit_option_menu import option_menu
@@ -38,8 +39,8 @@ def show_dashboard():
         # Sidebar Menu
         selected_page = option_menu(
             menu_title="",
-            options=["Chat", "Image Upload", "Live Audio", "Live Video", "Speech"],
-            icons=["chat-dots", "cloud-upload", "mic", "camera-video", "soundwave"],
+            options=["Chat", "Image Upload", "My Profile", "Live Video", "Speech"],
+            icons=["chat-dots", "cloud-upload", "person", "camera-video", "soundwave"],
             menu_icon="list",
             default_index=0,
             styles={
@@ -73,8 +74,8 @@ def show_dashboard():
         page.chat.run()
     elif selected_page == "Image Upload":
         page.image_upload.run()
-    elif selected_page == "Live Audio":
-        page.live_audio.run()
+    elif selected_page == "My Profile":
+        page.userprofile.run()
     elif selected_page == "Live Video":
         page.live_video.run()
     elif selected_page == "Speech":
