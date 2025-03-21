@@ -4,31 +4,37 @@ from streamlit_chat import message
 from dotenv import load_dotenv
 import os
 
+
 # Load environment variables
 load_dotenv()
 API_URI = os.getenv("API_URI")
 API_URL = f"{API_URI}/chat/"
 
-def run():
-    st.subheader("💬 Lets Chat")
+def run(session):
+    if not session:
+        st.warning("Please log in to access your profile.")
+        st.stop()
+
+    st.subheader("💬 Lets Chat ")
+    profile = st.session_state.get("profile")
+
+    if profile:
+        st.write(f"Welcome {st.session_state['display_name']}!")
+    else:
+        st.warning("No profile found. Please login.")
 
     # Initialize session state
     if "messages" not in st.session_state:
         st.session_state["messages"] = []
-    if "name" not in st.session_state:
-        st.session_state["name"] = None
-    if "age" not in st.session_state:
-        st.session_state["age"] = None
+  
 
     # Ask for name and age at the beginning
-    if not st.session_state["name"] or not st.session_state["age"]:
-        st.session_state["name"] = st.text_input("Enter your name:")
-        st.session_state["age"] = st.number_input("Enter your age:", min_value=1, max_value=120, step=1)
+    if not st.session_state["messages"]:
 
         if st.button("Start Chat"):
-            if st.session_state["name"] and st.session_state["age"]:
+            if profile:
                 st.session_state["messages"].append({
-                    "text": f"👋 Hi {st.session_state['name']}, let's begin!", "is_user": False
+                    "text": f"👋 Hi {st.session_state['display_name']}, let's begin!", "is_user": False
                 })
                 st.rerun()
             else:
@@ -36,8 +42,9 @@ def run():
 
     else:
         # Display previous chat messages
-        for msg in st.session_state["messages"]:
-            message(msg["text"], is_user=msg["is_user"])
+        for i, msg in enumerate(st.session_state["messages"]):
+            message(msg["text"], is_user=msg["is_user"], key=f"msg_{i}")
+
 
         # User input
         user_input = st.text_input("Type your message...")
@@ -46,12 +53,12 @@ def run():
             if user_input:
                 # Display user message
                 st.session_state["messages"].append({"text": user_input, "is_user": True})
-                message(user_input, is_user=True)
-
+                #message(user_input, is_user=True)
+                message(user_input, is_user=True, key=f"user_{len(st.session_state['messages'])}")
                 # Send user input to API
                 payload = {
-                    "name": st.session_state["name"],
-                    "age": st.session_state["age"],
+                    "name": profile["name"],
+                    "age": profile["age"],
                     "message": user_input
                 }
                 response = requests.post(API_URL, json=payload)
@@ -63,7 +70,8 @@ def run():
 
                 # Display AI response
                 st.session_state["messages"].append({"text": bot_response, "is_user": False})
-                message(bot_response, is_user=False)
+                #message(bot_response, is_user=False)
+                message(bot_response, is_user=False, key=f"bot_{len(st.session_state['messages']) + 1}")
 
             else:
                 st.warning("Please enter a message.")

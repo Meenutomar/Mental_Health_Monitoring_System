@@ -1,8 +1,13 @@
 import streamlit as st
 import websocket
 import base64
+import asyncio
+import json
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, AudioProcessorBase
+import av
 
 API_AUDIO_URL = "ws://localhost:8000/audiostream"
+API_TRANSCRIBE_URL = "http://localhost:8000/transcribe"
 
 # ✅ Convert Image to Base64
 def img_to_bytes(img_path):
@@ -21,6 +26,7 @@ def update_logs(new_log):
         st.session_state.logs = []
     
     st.session_state.logs.append(new_log)
+    print(new_log)
 
     # ✅ Update logs in real-time **only after log_placeholder is defined**
     if "log_placeholder" in st.session_state:
@@ -67,9 +73,57 @@ def auto_play_audio(audio_bytes):
     st.markdown(audio_html, unsafe_allow_html=True)
     update_logs("🎧 Audio playback started.")
 
+class AudioProcessor(AudioProcessorBase):
+    def __init__(self) -> None:
+        self.frames = []
+        update_logs("🛠️ AudioProcessor initialized ✅")
+
+    def recv_audio(self, frame: av.AudioFrame) -> av.AudioFrame:
+        update_logs("🎤 Audio frame received ✅")
+        print("🎤 Audio frame received ✅")  # Debugging
+
+        self.frames.append(frame)
+        return frame  # ✅ Return frame properly
+
+    def get_audio_data(self):
+        """Convert captured audio frames into WAV bytes."""
+        if not self.frames:
+            update_logs("⚠️ No audio frames captured! 🚨")
+            return b""  # Return empty bytes if no frames
+
+        update_logs(f"🎙️ Capturing {len(self.frames)} audio frames...")
+        audio_bytes = b"".join([frame.to_ndarray().tobytes() for frame in self.frames])
+
+        update_logs(f"🔊 Generated {len(audio_bytes)} bytes of audio data")
+        return audio_bytes
+
+def send_audio_to_backend(audio_bytes):
+    """Send recorded audio to backend for transcription."""
+    try:
+        update_logs("📤 Sending user audio for transcription...")
+        print('📤 Sending user audio for transcription...')
+        ws = websocket.create_connection(API_TRANSCRIBE_URL)
+
+        ws.send(audio_bytes)
+        response = ws.recv()
+        ws.close()
+
+        # ✅ Handle backend response
+        if response:
+            response_data = json.loads(response)
+            transcribed_text = response_data.get("text", "")
+            update_logs(f"🗣️ User: {transcribed_text}")
+            return transcribed_text
+        else:
+            update_logs("⚠️ Error: No response received from backend.")
+            return None
+    except Exception as e:
+        update_logs(f"⚠️ Error during transcription: {e}")
+        return None
+
 def run():
     """Main Streamlit UI."""
-    st.subheader("🎙️ Lets Talk")
+    st.title("🎙️ AI Mental Health Chat")
 
     # ✅ Initialize session state at the START of run()
     if "logs" not in st.session_state:
@@ -101,4 +155,36 @@ def run():
     # ✅ Render initial logs
     st.session_state.log_placeholder.code("\n".join(st.session_state.logs), language="bash")
 
+    # ✅ Live Audio Capture (User Response)
+    st.subheader("🎙️ Speak Now")
+    webrtc_ctx = webrtc_streamer(
+        key="user-audio",
+        mode=WebRtcMode.SENDRECV,
+        audio_processor_factory=AudioProcessor,
+        media_stream_constraints={
+            "video": True,
+            "audio": True  # 🔥 Disable echo cancellation
+        },
+    )
 
+    if webrtc_ctx.audio_processor is None:
+        update_logs("⚠️ Audio processor is not initialized!")
+    else:
+         update_logs("🟢 Audio processor is  initialized!")
+
+    # ✅ Capture and Send Audio on Button Click
+    if webrtc_ctx.audio_processor and st.button("🗣️ Send Response"):
+        update_logs("🟢 Send Response Clicked")
+        audio_data = webrtc_ctx.audio_processor.get_audio_data()
+        update_logs("🟢 Fetched Audio Data")
+        if audio_data:
+            update_logs("🟢 Sending audio to backend")
+            transcribed_text = send_audio_to_backend(audio_data)
+            update_logs("🟢 Received Response")
+            if transcribed_text:
+                st.session_state.logs.append(f"🗣️ {transcribed_text}")  # ✅ Add transcript to logs
+                st.session_state.log_placeholder.code("\n".join(st.session_state.logs), language="bash")
+
+# ✅ Run the app
+if __name__ == "__main__":
+    run()

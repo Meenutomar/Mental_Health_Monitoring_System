@@ -12,3 +12,7 @@ edge-tts
 websockets 
 soundfile
 simpleaudio
+SpeechRecognition
+pydub
+python-multipart
+supabase

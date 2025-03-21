@@ -1,20 +1,26 @@
+import page.userprofile
 import streamlit as st
-import base64
+from streamlit_supabase_auth import logout_button, login_form
 from streamlit_option_menu import option_menu
+import base64
 import page.chat  
 import page.image_upload
 import page.live_audio
 import page.live_video
 import page.speech
+from services.userservice import fetch_profile
 
-st.set_page_config(page_title="RoboMH - The Mental Health Diagnostic Tool", layout="wide")
+st.markdown("""
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+""", unsafe_allow_html=True)
+
 
 # Define colors
 bg_color = "#262730"  # Sidebar background
 text_color = "white"  
-selected_bg_color = "#FF4500"  # Darker orange for selection
+selected_bg_color = "#139262"  # Darker orange for selection
 header_bg = "#1E1E1E"  # Dark Gray header (modern look)
-border_color = "#FF4500"  # Orange bottom border
+border_color = "#a887d6"  # Orange bottom border
 
 # ✅ Convert logo.png to base64 for embedding in HTML
 def get_base64_image(image_path):
@@ -23,9 +29,46 @@ def get_base64_image(image_path):
 
 logo_base64 = get_base64_image("./assets/logo.png")
 
-# ✅ Inject Header with Orange Bottom Border
-st.markdown(f"""
+
+
+def show_dashboard():
+ 
+    if not st.session_state.get("authenticated", False):
+        st.switch_page("login.py")  # Redirect to login if not authenticated
+   
+    # 1. Authenticate user
+    session = login_form()
+
+    if not session:
+        st.warning("Please log in to access your profile.")
+        st.stop()
+
+    token = session['access_token']
+    user_email = session['user']['email']
+
+
+    # 2. Fetch existing profile
+    profile = fetch_profile(user_email,token)
+    if profile is None or profile.get('status') == 'not_found':
+        display_name = st.session_state.user_email
+        profile_pic =  "./assets/default_profile.png"
+    else:
+        display_name =  profile.get('name', st.session_state.user_email)
+        profile_pic = profile.get("profile_pic_url", "./assets/default_profile.png")
+
+    if "display_name" not in st.session_state:
+        st.session_state["display_name"] = display_name
+    if "profile_pic" not in st.session_state:
+        st.session_state["profile_pic"] = profile_pic
+
+   # ✅ Inject Header with Orange Bottom Border
+    st.markdown(f"""
     <style>
+        /* Hide Streamlit default header & footer */
+        #MainMenu, header, footer {{
+            visibility: hidden;
+        }}
+
         /* Custom Header */
         .header {{
             position: fixed;
@@ -33,53 +76,89 @@ st.markdown(f"""
             left: 0;
             width: 100%;
             height: 70px;
-            background-color: {header_bg};  /* Dark gray */
+            background-color: {header_bg};
             padding: 10px 20px;
             display: flex;
             align-items: center;
-           
-            font-size: 12px;
+            justify-content: space-between;
+            font-size: 16px;
             font-weight: bold;
             color: white;
             box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
-            border-bottom: 5px solid {border_color};  /* Orange Bottom Border */
+            border-bottom: 5px solid {border_color};
             z-index: 10000;
         }}
 
-        .header img {{
-            height: 55px;
+        .header-left {{
+            display: flex;
+            align-items: center;
+        }}
+
+        .header-left img {{
+            height: 50px;
             margin-right: 10px;
         }}
 
-        /* Push content down */
-        .main-content {{
-            margin-top: 85px;
+        .header-right {{
+            display: flex;
+            align-items: center;
         }}
 
-        /* Hide Streamlit Default Toolbar */
-        #MainMenu, header, footer {{
-            visibility: hidden;
+        .header-right p {{
+            margin: 0 10px 0 0;
+        }}
+
+        .header-right img {{
+            height: 45px;
+            width: 45px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }}
+         /* Fixed Footer */
+        .footer {{
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: {border_color};
+            color: white;
+            text-align: right;
+            padding: 10px;
+            font-size: 14px;
+            z-index: 1000;
+        }}
+
+        /* Push content below the fixed header */
+        .block-container {{
+            padding-top: 85px !important;
         }}
     </style>
+
     <div class="header">
-        <img src="data:image/png;base64,{logo_base64}" alt="Logo">
-       
+        <div class="header-left">
+            <img src="data:image/png;base64,{logo_base64}" alt="Logo">
+            <span>RoboMH</span>
+        </div>
+        <div class="header-right">
+            <p>Welcome {display_name}!</p>
+            <img src="{profile_pic}" alt="Profile Pic">
+        </div>
     </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# Sidebar
-st.sidebar.image("./assets/logo.png", width=80)
-st.sidebar.markdown("***AI-powered mental health chatbot***")
+     # Sidebar
+    st.sidebar.image("./assets/logo.png", width=80)
+    st.sidebar.markdown("***AI-powered mental health chatbot***")
 
-# Sidebar Menu
-with st.sidebar:
-    selected_page = option_menu(
-        menu_title="",
-        options=["Chat", "Image Upload", "Live Audio", "Live Video", "Speech"],
-        icons=["chat-dots", "cloud-upload", "mic", "camera-video", "soundwave"],
-        menu_icon="list",
-        default_index=0,
-        styles={
+    with st.sidebar:
+        # Sidebar Menu
+        selected_page = option_menu(
+            menu_title="",
+            options=["Chat", "Image Upload", "My Profile", "Live Video", "Speech"],
+            icons=["chat-dots", "cloud-upload", "person", "camera-video", "soundwave"],
+            menu_icon="list",
+            default_index=0,
+            styles={
             "container": {"padding": "10px", "background-color": bg_color},
             "icon": {"color": text_color, "font-size": "20px"},
             "nav-link": {
@@ -90,24 +169,32 @@ with st.sidebar:
                 "border-radius": "5px",
                 "color": text_color,
                 "background-color": bg_color,
+                "border-color": border_color,
+                "border": 4
             },
             "nav-link-selected": {"background-color": selected_bg_color, "color": "white", "font-weight": "bold"},
         },
-    )
+        )
+      
+        st.write(f"Logged in as: {st.session_state.user_email}")
+        
+        if logout_button():  # SINGLE Logout Button ✅
+            st.session_state.clear()  # Clear all session variables
+            st.session_state.authenticated = False  # Explicitly reset authentication
+            st.switch_page("login.py")  # Redirect to login
 
-# Add spacing for main content
-st.markdown('<div class="main-content">', unsafe_allow_html=True)
+        st.write("---")
+    # Render the selected page
+    if selected_page == "Chat":
+        page.chat.run(session)
+    elif selected_page == "Image Upload":
+        page.image_upload.run()
+    elif selected_page == "My Profile":
+        page.userprofile.run(session)
+    elif selected_page == "Live Video":
+        page.live_video.run()
+    elif selected_page == "Speech":
+        page.speech.run()
 
-# Render the selected page
-if selected_page == "Chat":
-    page.chat.run()
-elif selected_page == "Image Upload":
-    page.image_upload.run()
-elif selected_page == "Live Audio":
-    page.live_audio.run()
-elif selected_page == "Live Video":
-    page.live_video.run()
-elif selected_page == "Speech":
-    page.speech.run()
-
-st.markdown('</div>', unsafe_allow_html=True)
+    # Inject fixed footer
+    st.markdown('<div class="footer">© 2025 RoboMH | All Rights Reserved</div>', unsafe_allow_html=True)
