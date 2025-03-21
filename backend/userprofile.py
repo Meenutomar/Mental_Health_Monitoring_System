@@ -5,6 +5,7 @@ from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
 import io
+import tempfile
 
 # Load environment variables
 load_dotenv()
@@ -35,52 +36,89 @@ class UserProfile(BaseModel):
 
 # 🚀 1. Get User Profile
 @router.get("/profile/{email}")
-def get_profile(email: str):
-    print('Get Profile::', email);
-    response = supabase.table("UserProfile").select("*").eq("email", email).execute()
-    print('Response:', response)
-    if response.data:
-        return {"status": "success", "profile": response.data[0]}
-    raise HTTPException(status_code=404, detail="Profile not found")
-
-# 🚀 2. Save or Update User Profile
-@router.post("/profile")
-def save_profile(profile: UserProfile, authorization: str = Header(None)):
+async def get_profile(email: str, authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
 
     token = authorization.split("Bearer ")[-1]
 
-    # Set session for auth (note: Supabase Python SDK only stores this for future use)
+    # Set the Supabase session BEFORE any action
     supabase.auth.set_session(access_token=token, refresh_token=token)
 
-    # Check if profile exists
-    existing = supabase.table("UserProfile").select("*").eq("email", profile.email).execute()
+    # Optional: Validate the token really belongs to this email
+    user = supabase.auth.get_user()
+    if not user or user.user.email != email:
+        raise HTTPException(status_code=403, detail="Access denied")
 
-    profile_data = profile.dict()
+    # Proceed to fetch profile from Supabase DB
+    try:
+        result = supabase.table("UserProfile").select("*").eq("email", email).execute()
+        if not result.data:
+            return {"status": "not_found", "message": "Profile not found"}
+        return result.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    if existing.data:
-        response = supabase.table("UserProfile").update(profile_data).eq("email", profile.email).execute()
-    else:
-        response = supabase.table("UserProfile").insert(profile_data).execute()
+# 🚀 2. Save or Update User Profile
+@router.post("/profile")
+def save_profile(profile: UserProfile, authorization: str = Header(None)):
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
 
-    return {"status": "success", "message": "Profile saved successfully", "profile": response.data[0]}
+        token = authorization.split("Bearer ")[-1]
+
+        # Set session for auth (note: Supabase Python SDK only stores this for future use)
+        supabase.auth.set_session(access_token=token, refresh_token=token)
+
+        # Check if profile exists
+        existing = supabase.table("UserProfile").select("*").eq("email", profile.email).execute()
+
+        profile_data = profile.dict()
+
+        if existing.data:
+            response = supabase.table("UserProfile").update(profile_data).eq("email", profile.email).execute()
+        else:
+            response = supabase.table("UserProfile").insert(profile_data).execute()
+
+        return {"status": "success", "message": "Profile saved successfully", "profile": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Save Profile failed: {str(e)}")
 
 # 🚀 3. Upload Profile Picture
+
+
 @router.post("/upload_image/{file_name}")
-async def upload_image(file_name: str, file: UploadFile = File(...)):
+async def upload_image(file_name: str, file: UploadFile = File(...), authorization: str = Header(None)):
     try:
-        file_bytes = await file.read()
-        file_io = io.BytesIO(file_bytes)
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
+
+        token = authorization.split("Bearer ")[-1]
+
+        # ✅ Set Supabase session before performing auth-related actions
+        supabase.auth.set_session(access_token=token, refresh_token=token)
+
+        # ✅ (Optional Debug) Print current user after setting session
+        print("Current Supabase user:", supabase.auth.get_user())
+
+        # Save to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
 
         # Upload to Supabase Storage
-        supabase.storage.from_("profilepictures").upload(file_name, file_io, {"content-type": file.content_type})
+        supabase.storage.from_("profilepictures").upload(file_name, tmp_path, {
+            "content-type": file.content_type,
+            "x-upsert": "true"
+        })
 
         # Public URL
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/profilepictures/{file_name}"
         return {"status": "success", "url": public_url}
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 
 
