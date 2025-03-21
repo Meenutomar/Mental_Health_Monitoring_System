@@ -17,7 +17,10 @@ def fetch_profile(email, token):
     response = requests.get(f"{API_URI}/profile/{email}", headers=headers)
     print('Fetch Profile:', response.json())
     if response.status_code == 200:
-        return response.json()
+        profile = response.json()
+        if "profile" not in st.session_state:
+            st.session_state.profile = profile
+        return profile
     return None
 
 def save_profile(profile_data, token):

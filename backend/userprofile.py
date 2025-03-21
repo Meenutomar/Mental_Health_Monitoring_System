@@ -55,8 +55,18 @@ async def get_profile(email: str, authorization: str = Header(None)):
         result = supabase.table("UserProfile").select("*").eq("email", email).execute()
         if not result.data:
             return {"status": "not_found", "message": "Profile not found"}
-        return result.data[0]
+        
+        profile = result.data[0]
+        print('Profile:', profile)
+        image_path = f"/{email}.png"
+        # Generate signed URL valid for, say, 1 day
+        signed_url_response = supabase.storage.from_("profilepictures").create_signed_url(image_path, expires_in=86400)
+        print('Signed URL', signed_url_response)
+        profile["profile_pic_url"] = signed_url_response.get("signedURL")
+        print("Fetched Profile::" , profile)
+        return profile
     except Exception as e:
+        print('Ëxception::',e)
         raise HTTPException(status_code=500, detail=str(e))
 
 # 🚀 2. Save or Update User Profile
