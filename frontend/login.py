@@ -90,15 +90,16 @@ def show_login():
     with col2:
         st.markdown("<div class='right-section'>", unsafe_allow_html=True)
         st.header("Sign In to Continue")
+        try:
+            session = login_form()  # Supabase authentication
 
-        session = login_form()  # Supabase authentication
-
-        if session:
-            st.session_state.authenticated = True
-            st.session_state.user_email = session['user']['email']
-            st.success(f"Welcome, {st.session_state.user_email}!")
-            st.rerun()  # Redirect to dashboard
-
+            if session:
+                st.session_state.authenticated = True
+                st.session_state.user_email = session['user']['email']
+                st.success(f"Welcome, {st.session_state.user_email}!")
+                st.rerun()  # Redirect to dashboard
+        except Exception as e:
+            st.error(f"Signup/Login error: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
 
 

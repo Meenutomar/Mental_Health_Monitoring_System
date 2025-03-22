@@ -16,3 +16,5 @@ SpeechRecognition
 pydub
 python-multipart
 supabase
+email-validator
+tf-keras
