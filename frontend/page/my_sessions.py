@@ -18,8 +18,11 @@ load_dotenv()
 API_URI = os.getenv("API_URI")
 SAVE_SESSION_URL = f"{API_URI}/session/" # GET request
 # Load a Unicode font (ensure .ttf file is available)
-FONT_PATH = "DejaVuSans.ttf" 
-BOLD_FONT_PATH = "DejaVuSans-Bold.ttf"
+#FONT_PATH = "DejaVuSans.ttf" 
+#BOLD_FONT_PATH = "DejaVuSans-Bold.ttf"
+# Define font paths
+FONT_PATH = "fonts/DejaVuSans.ttf"
+BOLD_FONT_PATH = "fonts/DejaVuSans-Bold.ttf"
 
 def run(session):
     if not session:
@@ -39,11 +42,12 @@ def run(session):
     user_email = profile['email']
     access_token = session.get("access_token") 
 
-    # Filters
-    st.markdown("📅 Filter by Date")
-    col1, col2 = st.columns(2)
-    start_date = col1.date_input("Start Date")
-    end_date = col2.date_input("End Date")
+    with st.expander("🔎 Filter Options", expanded=True):
+        col1, col2 = st.columns(2)
+        start_date = col1.date_input("Start Date")
+        end_date = col2.date_input("End Date")
+        search_term = st.text_input("Search within sessions")
+
 
     # Fetch sessions
     params = {
@@ -59,9 +63,6 @@ def run(session):
     response = requests.get(SAVE_SESSION_URL, params=params, headers=headers)
     sessions = response.json()
 
-    # Filtered search inside conversations
-    search_term = st.text_input("🔍 Search within sessions (text only)")
-
     filtered_sessions = []
     for session in sessions:
         if not search_term:
@@ -70,10 +71,28 @@ def run(session):
             for msg in session['conversation']:
                 if search_term.lower() in msg['text'].lower():
                     filtered_sessions.append(session)
-                    break
+                    break# Horizontal layout for export and download options
 
-    # Export option
-    if st.button("📤 Export Filtered Results"):
+    col_pdf1, col_pdf2, col_pdf3 = st.columns([1.5, 2, 2])
+
+    with col_pdf1:
+        export_csv = st.button("📤 Export Results")
+
+    with col_pdf2:
+        generate_pdf = st.checkbox(" Prepare PDF for Download")
+
+    with col_pdf3:
+        if generate_pdf and filtered_sessions:
+            pdf_data = generate_pdf_unicode(filtered_sessions)
+            st.download_button(
+                label="📄 Download PDF",
+                data=pdf_data,
+                file_name=f"chat_sessions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+
+    # Export CSV logic
+    if export_csv:
         if filtered_sessions:
             df = pd.DataFrame([
                 {
@@ -88,22 +107,6 @@ def run(session):
             st.download_button("Download CSV", data=csv_buffer.getvalue(), file_name="filtered_sessions.csv", mime="text/csv")
         else:
             st.warning("No sessions to export.")
-    
-    # Toggle to generate PDF download button
-    generate_pdf = st.checkbox("✅ Prepare PDF for Download")
-
-    if generate_pdf:
-        if filtered_sessions:
-            pdf_data = generate_pdf_unicode(filtered_sessions)
-            st.download_button(
-                label="📄 Download PDF",
-                data=pdf_data,
-                file_name=f"chat_sessions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                mime="application/pdf"
-            )
-        else:
-            st.warning("No sessions available to generate PDF.")
-
 
 
     # Display sessions
@@ -118,9 +121,7 @@ def run(session):
 
 
 
-# Define font paths
-# FONT_PATH = "fonts/DejaVuSans.ttf"
-# BOLD_FONT_PATH = "fonts/DejaVuSans-Bold.ttf"
+
 
 def clean_text(text):
     return re.sub(r'[^\x00-\x7F\u00A0-\uFFFF]+', '', text)
