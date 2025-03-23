@@ -15,9 +15,9 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def get_chat_session(session_id: str):
     response = (
-        supabase.table("Chat_Sessions")
+        supabase.table("Chat_Session")
         .select("*")
-        .eq("id", session_id)
+        .eq("session_id", session_id)
         .execute()
     )
     data = response.data

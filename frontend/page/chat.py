@@ -4,12 +4,14 @@ from streamlit_chat import message
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timezone
+import uuid
 
 # Load environment variables
 load_dotenv()
 API_URI = os.getenv("API_URI")
 API_URL = f"{API_URI}/chat/"
 SAVE_SESSION_URL = f"{API_URI}/session/"  # <-- new endpoint for saving full chat
+
 
 def run(session):
     if not session:
@@ -35,7 +37,7 @@ def run(session):
         st.session_state["session_start_time"] = datetime.utcnow()
 
     if "chat_session_id" not in st.session_state:
-        st.session_state["chat_session_id"] = f"session_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        st.session_state["chat_session_id"] = f"session_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())}"
 
     # --- Chat logic ---
     if not st.session_state["messages"]:
@@ -73,6 +75,13 @@ def run(session):
                 headers = {"Authorization": f"Bearer {access_token}"}
 
                 save_response = requests.post(SAVE_SESSION_URL, json=save_payload, headers=headers)
+                analysis_payload = {
+                    "session_id": st.session_state["chat_session_id"],
+                    "user_id": profile["user_id"]
+                }
+                
+                # After session saved to Supabase from frontend
+                response = requests.post(f"{API_URI}/analysis", json=analysis_payload, headers=headers)
 
               
             except Exception as e:

@@ -2,6 +2,7 @@ import google.generativeai as genai
 import os
 import json
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
 load_dotenv()
@@ -30,4 +31,7 @@ def analyze_session_with_gemini(conversation: list):
     )
 
     response = model.generate_content(prompt)
-    return json.loads(response.text)
+     # Clean markdown-style backticks and extract JSON
+    cleaned = re.sub(r"```json|```", "", response.text).strip()
+    print("Cleaned:", cleaned)
+    return json.loads(cleaned)

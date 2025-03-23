@@ -13,8 +13,9 @@ class AnalysisRequest(BaseModel):
     session_id: str
     user_id: str
 
-@router.post("/analyze_session")
+@router.post("/analysis")
 def analyze_session(request: AnalysisRequest):
+    print("Analyzing session...", request.session_id)
     existing = get_session_analysis(request.session_id)
     if existing:
         return existing
