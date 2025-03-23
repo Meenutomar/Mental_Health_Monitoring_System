@@ -1,23 +1,16 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import streamlit as st
 import requests
 from streamlit_chat import message
 from dotenv import load_dotenv
-import os
 from datetime import datetime, timezone
 import streamlit as st
 import requests
 import pandas as pd
-import io
-from fpdf import FPDF
-from io import BytesIO
-import textwrap
-import re
-from io import BytesIO
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
+import report_pdf
 
 # Load environment variables
 load_dotenv()
@@ -55,7 +48,7 @@ def run(session):
                     st.markdown(f"**Analysis:** {row['summary']}")
             
             if st.button("📥 Download Progress Report"):
-                pdf_buffer = generate_pdf(profile, analyses)
+                pdf_buffer = report_pdf.generate_pdf(profile, analyses, logo_path='./assets/logo.png')
                 st.download_button(
                     label="Download PDF",
                     data=pdf_buffer,
@@ -101,33 +94,3 @@ def fetch_user_analyses(session, user):
     else:
         st.error("Failed to fetch analysis data.")
         return []
-    
-
-def generate_pdf(profile, analyses):
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
-
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='CenterTitle', fontSize=16, leading=20, alignment=TA_CENTER, spaceAfter=20, spaceBefore=10, fontName="Helvetica-Bold"))
-    styles.add(ParagraphStyle(name='NormalText', fontSize=12, leading=15))
-
-    story = []
-
-    # Bold Title
-    story.append(Paragraph("Mental Health Progress Report", styles["CenterTitle"]))
-    story.append(Paragraph(f"<b><u>Patient Details:</u></b>", styles["NormalText"]))
-    story.append(Paragraph(f"<b>Name:</b> {profile['name']}", styles["NormalText"]))
-    story.append(Paragraph(f"<b>Age:</b> {profile['age']}", styles["NormalText"]))
-    story.append(Paragraph(f"<b>Email:</b> {profile['email']}", styles["NormalText"]))
- 
-
-    for analysis in analyses:
-        story.append(Paragraph(f"<b>Date:</b> {analysis['created_at']}", styles["NormalText"]))
-        story.append(Paragraph(f"<b>Score:</b> {analysis['score']}", styles["NormalText"]))
-        story.append(Paragraph(f"<b>Emotions:</b> {analysis['summary']}", styles["NormalText"]))
-        story.append(Paragraph(f"<b>Insights:</b> {analysis['change']}", styles["NormalText"]))
-        story.append(Spacer(1, 15))
-
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
