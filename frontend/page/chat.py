@@ -67,7 +67,7 @@ def run(session):
             try:
                 #print("Sending payload:", save_payload)
                 # Grab token from the session
-                access_token = session.get("access_token")  # or however `streamlit_supabase_auth` stores it
+                access_token = session.get("access_token") 
 
                 # Send token in Authorization header
                 headers = {"Authorization": f"Bearer {access_token}"}

@@ -1,15 +1,14 @@
 # chat_session_routes.py
 
-from fastapi import APIRouter, HTTPException, status, Header
-from pydantic import BaseModel, EmailStr
-from typing import List
-from datetime import datetime
+from fastapi import APIRouter, HTTPException, status, Header, Query
+from datetime import datetime, timedelta
 import uuid
 from supabase import create_client, Client
 from schemas import ChatMessage, ChatSessionRequest
 import os
 from dotenv import load_dotenv
 import logging
+from typing import Optional
 
 
 # Load environment variables
@@ -55,4 +54,37 @@ def save_chat_session(payload: ChatSessionRequest,  authorization: str = Header(
 
     except Exception as e:
         print('Exception', e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/session/")
+def get_user_sessions(
+    user_email: str,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    authorization: str = Header(None)
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
+    try:
+        token = authorization.split("Bearer ")[-1]
+        supabase.auth.set_session(access_token=token, refresh_token=token)
+
+        query = supabase.table("Chat_Session").select("*").eq("user_email", user_email)
+
+        if start_date:
+            start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+            query = query.gte("started_at", start_datetime.isoformat())
+
+        if end_date:
+            # Add 1 day to include the full end date up to 23:59:59
+            end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            query = query.lt("started_at", end_datetime.isoformat())
+
+
+        response = query.order("started_at", desc=True).execute()
+
+        return response.data
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
