@@ -5,6 +5,7 @@ import videostream
 import audiostream
 import audiojs
 import userprofile
+import chat_session
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -24,6 +25,7 @@ app.include_router(videostream.router)
 app.include_router(audiostream.router)
 app.include_router(audiojs.router)
 app.include_router(userprofile.router)
+app.include_router(chat_session.router)
 
 if __name__ == "__main__":
     import uvicorn

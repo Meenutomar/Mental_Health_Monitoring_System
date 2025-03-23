@@ -77,7 +77,7 @@ def run(session):
             "profile_pic_url": profile_pic_url,
         }
 
-        print('Save Profile: ', profile_data)
+        #print('Save Profile: ', profile_data)
 
         if save_profile(profile_data, token):
             st.success("Profile saved successfully!")

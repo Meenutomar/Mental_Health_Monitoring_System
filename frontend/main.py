@@ -1,3 +1,4 @@
+import page.my_sessions
 import page.userprofile
 import streamlit as st
 from streamlit_supabase_auth import logout_button, login_form
@@ -5,9 +6,8 @@ from streamlit_option_menu import option_menu
 import base64
 import page.chat  
 import page.image_upload
-import page.live_audio
-import page.live_video
-import page.speech
+import page.report
+import page.my_sessions
 from services.userservice import fetch_profile
 
 st.markdown("""
@@ -154,8 +154,8 @@ def show_dashboard():
         # Sidebar Menu
         selected_page = option_menu(
             menu_title="",
-            options=["Chat", "Image Upload", "My Profile", "Live Video", "Speech"],
-            icons=["chat-dots", "cloud-upload", "person", "camera-video", "soundwave"],
+            options=["Chat",  "My Profile", "My Sessions", "Reports"],
+            icons=["chat-dots", "person", "inboxes", "bar-chart"],
             menu_icon="list",
             default_index=0,
             styles={
@@ -191,10 +191,10 @@ def show_dashboard():
         page.image_upload.run()
     elif selected_page == "My Profile":
         page.userprofile.run(session)
-    elif selected_page == "Live Video":
-        page.live_video.run()
-    elif selected_page == "Speech":
-        page.speech.run()
+    elif selected_page == "My Sessions":
+        page.my_sessions.run(session)
+    elif selected_page == "Reports":
+        page.report.run(session)
 
     # Inject fixed footer
     st.markdown('<div class="footer">© 2025 RoboMH | All Rights Reserved</div>', unsafe_allow_html=True)
