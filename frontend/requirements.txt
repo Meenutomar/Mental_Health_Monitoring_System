@@ -16,3 +16,4 @@ pyttsx3
 PyAudio
 streamlit_supabase_auth
 fpdf2
+reportlab
