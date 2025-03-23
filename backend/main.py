@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import chatbot
-import videostream
-import audiostream
-import audiojs
+#import videostream
+#import audiostream
+#import audiojs
 import userprofile
 import chat_session
+import reports.analysis as analysis
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -21,11 +22,12 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(chatbot.router)
-app.include_router(videostream.router)
-app.include_router(audiostream.router)
-app.include_router(audiojs.router)
+#app.include_router(videostream.router)
+#app.include_router(audiostream.router)
+#app.include_router(audiojs.router)
 app.include_router(userprofile.router)
 app.include_router(chat_session.router)
+app.include_router(analysis.router)
 
 if __name__ == "__main__":
     import uvicorn
