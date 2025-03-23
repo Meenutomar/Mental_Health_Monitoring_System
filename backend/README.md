@@ -14,6 +14,11 @@ backend-venv/Scripts/activate
 </code>
 This will activate virtual environment
 
+### How to add dependencies
+<code>
+    pip install -r requirements.txt
+</code>
+
 ## How to run
 <code>
 uvicorn main:app
