@@ -154,8 +154,8 @@ def show_dashboard():
         # Sidebar Menu
         selected_page = option_menu(
             menu_title="",
-            options=["Chat", "Image Upload", "My Profile", "Live Video", "Speech"],
-            icons=["chat-dots", "cloud-upload", "person", "camera-video", "soundwave"],
+            options=["Chat",  "My Profile", "My Sessions", "Reports"],
+            icons=["chat-dots", "person", "inboxes", "bar-chart"],
             menu_icon="list",
             default_index=0,
             styles={
