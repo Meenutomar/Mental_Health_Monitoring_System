@@ -14,6 +14,11 @@ frontend-venv/Scripts/activate
 </code>
 This will activate virtual environment
 
+### How to add dependencies
+<code>
+    pip install -r requirements.txt
+</code>
+
 ## How to start app
 Run the following command in terminal
 <code>
@@ -22,5 +27,5 @@ Run the following command in terminal
 
 For automatic reload use 
 <code>
-streamlit run main.py --server.runOnSave true
+streamlit run app.py --server.runOnSave true
 </code>
