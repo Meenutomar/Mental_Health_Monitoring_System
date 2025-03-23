@@ -21,6 +21,7 @@ This will activate virtual environment
 
 ## How to start app
 Run the following command in terminal
+
 <code>
  streamlit run main.py
 </code>
