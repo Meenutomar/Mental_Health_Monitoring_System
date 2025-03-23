@@ -14,4 +14,3 @@ class ChatSessionRequest(BaseModel):
     conversation: List[ChatMessage]
     started_at: datetime
     ended_at: datetime
-    conversation_date: str  # Format: YYYY-MM-DD

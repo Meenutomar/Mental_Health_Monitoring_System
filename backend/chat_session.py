@@ -25,7 +25,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 router = APIRouter()
 
-@router.post("/session/")
+@router.post("/session/", status_code=201)
 def save_chat_session(payload: ChatSessionRequest,  authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
@@ -42,23 +42,17 @@ def save_chat_session(payload: ChatSessionRequest,  authorization: str = Header(
         if not user or user.user.email != payload.user_email:
             raise HTTPException(status_code=403, detail="Access denied")
 
-        print(2)
         data = {
-            "id": str(uuid.uuid4()),
             "session_id": payload.session_id,
             "user_email": payload.user_email,
-            "conversation": [msg.dict() for msg in payload.conversation],
+            "conversation": [msg.model_dump() for msg in payload.conversation],
             "started_at": payload.started_at.isoformat(),
             "ended_at": payload.ended_at.isoformat(),
-            "conversation_date": payload.conversation_date
         }
-        print(3, data)
-        res = supabase.table("chat_sessions").insert(data).execute()
-        print(4, res)
-        if res.error:
-            raise HTTPException(status_code=500, detail=res.error.message)
-
+        res = supabase.table("Chat_Session").insert(data).execute()
+        print('Response from backend:', res)
         return {"message": "Chat session saved successfully!"}
 
     except Exception as e:
+        print('Exception', e)
         raise HTTPException(status_code=500, detail=str(e))

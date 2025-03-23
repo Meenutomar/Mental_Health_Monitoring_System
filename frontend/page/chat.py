@@ -63,7 +63,6 @@ def run(session):
                 "conversation": st.session_state["chat_history"],
                 "started_at": str(st.session_state["session_start_time"]),
                 "ended_at": str(now),
-                "conversation_date": conversation_date 
             }
             try:
                 #print("Sending payload:", save_payload)
@@ -78,7 +77,7 @@ def run(session):
               
             except Exception as e:
                 print("Error::", e)
-            if save_response.status_code == 200:
+            if save_response.status_code == 201:
                 st.success("✅ Session saved successfully!")
                 # Reset session
                 st.session_state["messages"] = []
