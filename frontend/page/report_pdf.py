@@ -89,30 +89,32 @@ def generate_pdf(profile, analyses, logo_path=None):
         story.append(Paragraph(f"<b>Insights:</b> {analysis['change']}", styles["NormalText"]))
         story.append(Spacer(1, 15))
 
-    # Score Graph
-    if analyses:
-        try:
-            scores = [a['score'] for a in analyses]
-            dates = [datetime.fromisoformat(a['created_at']).strftime('%d %b') for a in analyses]
+        # Score Graph as Bar Chart
+        if analyses:
+            try:
+                scores = [a['score'] for a in analyses]
+                dates = [datetime.fromisoformat(a['created_at']).strftime('%d %b') for a in analyses]
 
-            plt.figure(figsize=(6, 3))
-            plt.plot(dates, scores, marker='o', color='blue', linewidth=2)
-            plt.title('Score Progress Over Time')
-            plt.xlabel('Date')
-            plt.ylabel('Score')
-            plt.grid(True)
+                plt.figure(figsize=(6, 3))
+                plt.bar(dates, scores, color='skyblue', edgecolor='black')
+                plt.title('Score Progress Over Time')
+                plt.xlabel('Date')
+                plt.ylabel('Score')
+                plt.xticks(rotation=45)
+                plt.grid(axis='y', linestyle='--', linewidth=0.5)
 
-            graph_buffer = BytesIO()
-            plt.tight_layout()
-            plt.savefig(graph_buffer, format='PNG')
-            plt.close()
-            graph_buffer.seek(0)
+                graph_buffer = BytesIO()
+                plt.tight_layout()
+                plt.savefig(graph_buffer, format='PNG')
+                plt.close()
+                graph_buffer.seek(0)
 
-            story.append(Paragraph("<b>Progress Graph:</b>", styles["NormalText"]))
-            story.append(Image(graph_buffer, width=400, height=200))
-            story.append(Spacer(1, 20))
-        except Exception as e:
-            story.append(Paragraph(f"<i>Could not render graph: {e}</i>", styles["NormalText"]))
+                story.append(Paragraph("<b>Progress Graph:</b>", styles["NormalText"]))
+                story.append(Image(graph_buffer, width=400, height=200))
+                story.append(Spacer(1, 20))
+            except Exception as e:
+                story.append(Paragraph(f"<i>Could not render graph: {e}</i>", styles["NormalText"]))
+
 
     # Build PDF
     doc.build(story)

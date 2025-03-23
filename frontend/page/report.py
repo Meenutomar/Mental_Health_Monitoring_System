@@ -11,6 +11,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import report_pdf
+import altair as alt
 
 # Load environment variables
 load_dotenv()
@@ -37,7 +38,22 @@ def run(session):
             df['created_at'] = pd.to_datetime(df['created_at'])
 
             st.subheader("📈 Recovery Over Time")
-            st.line_chart(df.set_index('created_at')['score'])
+            # Sort by created_at to ensure proper order
+            df = df.sort_values('created_at')
+
+            # Bar chart with timestamp (datetime) on X-axis
+            bar_chart = alt.Chart(df).mark_bar().encode(
+                x=alt.X('created_at:T', title='Session Time'),
+                y=alt.Y('score:Q', title='Recovery Score'),
+                tooltip=['created_at:T', 'score:Q', 'tone:N']
+            ).properties(
+                title='Recovery Score per Session',
+                width=700,
+                height=400
+            )
+
+            st.altair_chart(bar_chart, use_container_width=True)
+
 
             st.subheader("🧠 Session Insights")
             for i, row in df.iterrows():
