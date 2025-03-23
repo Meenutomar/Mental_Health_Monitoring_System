@@ -7,14 +7,19 @@ from datetime import datetime, timezone
 import streamlit as st
 import requests
 import pandas as pd
-import json
 import io
-
+from fpdf import FPDF
+from io import BytesIO
+import textwrap
+import re
 
 # Load environment variables
 load_dotenv()
 API_URI = os.getenv("API_URI")
-SAVE_SESSION_URL = f"{API_URI}/session/"  # <-- new endpoint for saving full chat
+SAVE_SESSION_URL = f"{API_URI}/session/" # GET request
+# Load a Unicode font (ensure .ttf file is available)
+FONT_PATH = "DejaVuSans.ttf" 
+BOLD_FONT_PATH = "DejaVuSans-Bold.ttf"
 
 def run(session):
     if not session:
@@ -83,6 +88,23 @@ def run(session):
             st.download_button("Download CSV", data=csv_buffer.getvalue(), file_name="filtered_sessions.csv", mime="text/csv")
         else:
             st.warning("No sessions to export.")
+    
+    # Toggle to generate PDF download button
+    generate_pdf = st.checkbox("✅ Prepare PDF for Download")
+
+    if generate_pdf:
+        if filtered_sessions:
+            pdf_data = generate_pdf_unicode(filtered_sessions)
+            st.download_button(
+                label="📄 Download PDF",
+                data=pdf_data,
+                file_name=f"chat_sessions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.warning("No sessions available to generate PDF.")
+
+
 
     # Display sessions
     st.markdown(f"🧾 Showing {len(filtered_sessions)} session(s)")
@@ -92,4 +114,79 @@ def run(session):
                 role = "🧠 AI" if not msg['is_user'] else "🧍 You"
                 st.markdown(f"**{role}:** {msg['text']}")
 
+  
 
+
+
+# Define font paths
+# FONT_PATH = "fonts/DejaVuSans.ttf"
+# BOLD_FONT_PATH = "fonts/DejaVuSans-Bold.ttf"
+
+def clean_text(text):
+    return re.sub(r'[^\x00-\x7F\u00A0-\uFFFF]+', '', text)
+
+def generate_pdf_unicode(session_data):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    usable_width = pdf.w - 2 * pdf.l_margin
+
+    try:
+        pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
+        pdf.add_font("DejaVu", "B", BOLD_FONT_PATH, uni=True)
+        pdf.set_font("DejaVu", size=12)
+    except Exception as e:
+        print("Font loading error:", e)
+        pdf.set_font("Arial", size=12)
+
+    for session in session_data:
+        try:
+            pdf.set_font("DejaVu", style='B', size=14)
+            pdf.cell(usable_width, 10, txt=f"Session ID: {session['session_id']}", ln=True)
+            pdf.set_font("DejaVu", size=12)
+            pdf.cell(usable_width, 10, txt=f"Started At: {session['started_at']}", ln=True)
+            pdf.cell(usable_width, 10, txt=f"Ended At: {session['ended_at']}", ln=True)
+            pdf.cell(usable_width, 10, txt="Conversation:", ln=True)
+
+            for message in session["conversation"]:
+                sender = "You" if message["is_user"] else "Bot"
+                raw_text = f"{sender}: {message['text']}"
+                cleaned_text = clean_text(raw_text)
+
+                # Handle long unbreakable words
+                cleaned_text = re.sub(r'(\S{80,})', lambda m: '\n'.join(textwrap.wrap(m.group(0), 80)), cleaned_text)
+
+                # Wrap the cleaned line for consistency
+                wrapped_lines = textwrap.wrap(cleaned_text, width=100)
+
+                # Always reset cursor to left margin
+                pdf.set_x(pdf.l_margin)
+
+                for line in wrapped_lines:
+                    try:
+                        pdf.multi_cell(w=usable_width, h=10, txt=line)
+                        pdf.ln(1)  # Small vertical spacing between messages
+                    except Exception as inner_e:
+                        print("MultiCell error for line:", line)
+                        print("Error:", inner_e)
+                        pdf.set_x(pdf.l_margin)
+                        pdf.cell(usable_width, 10, txt="[Unrenderable line]", ln=True)
+
+            pdf.ln(5)
+
+        except Exception as outer_e:
+            print("Session-level error:", outer_e)
+            pdf.set_font("Arial", size=12)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(usable_width, 10, txt="[Error rendering this session]", ln=True)
+
+    pdf_output = BytesIO()
+    try:
+        pdf.output(pdf_output)
+    except Exception as final_e:
+        print("Final PDF output error:", final_e)
+        return None
+
+    pdf_output.seek(0)
+    return pdf_output
