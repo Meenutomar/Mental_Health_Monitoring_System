@@ -12,7 +12,8 @@ from fpdf import FPDF
 from io import BytesIO
 import textwrap
 import re
-import my_sessions_pdf
+#mport my_sessions_pdf
+from . import my_sessions_pdf
 
 # Load environment variables
 load_dotenv()
