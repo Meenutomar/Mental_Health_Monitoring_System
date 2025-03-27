@@ -6,3 +6,4 @@
 /frontend/frontend-venv/*
 /frontend/page/__pycache__/*
 /backend/backend-venv/*
+.env
